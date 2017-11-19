@@ -7,7 +7,7 @@ except IOError:
     long_description = ""
 
 setup(
-    name="control-panel-widgets",
+    name="nbmultitask",
     version="0.1.0",
     description="ipywidget controls for multitasking in Jupyter notebooks",
     license="MIT",
@@ -18,5 +18,7 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.6",
-    ]
+    ],
+    py_modules=['nbmultitask']
+
 )
