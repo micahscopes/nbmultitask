@@ -4,6 +4,7 @@ from multiprocessing import Process, Queue, Event
 from logging.handlers import QueueHandler
 from ipywidgets import Output
 from IPython.display import display
+from contextlib import contextmanager
 from time import sleep
 import sys
 import random
@@ -21,6 +22,14 @@ class LogToQueue(Handler):
         return self.q.get()
     def empty(self):
         return self.q.empty()
+    def print(self,x,end='\n'):
+        self.write(str(x)+end)
+
+@contextmanager
+def empty_context():
+    yield None
+
+EmptyContext = empty_context()
 
 def withLogAndControls(superclass):
     class Processor(superclass):
@@ -36,7 +45,6 @@ def withLogAndControls(superclass):
             self.start_stop_button.on_click(self.__toggle_start_stop__)
             self.start_stop_button.button_style = 'success'
             
-            
             self.refresh_log_button = Button(description='refresh log')
             self.refresh_log_button.on_click(lambda evt: self.refresh_log())
             self.clear_log_button = Button(description='clear log')
@@ -48,7 +56,8 @@ def withLogAndControls(superclass):
             
             
             self.log = LogToQueue()
-            kwargs['log'] = self.log
+            if issubclass(self.__class__,Thread): 
+                kwargs['thread_print'] = self.log.print
             self.log_refresh_time = log_refresh_time
             self.watching_log = Event()
             
@@ -66,7 +75,7 @@ def withLogAndControls(superclass):
                 while not self.log.empty():
                     msg = self.log.get()
                     with self.output:
-                        print(msg)
+                        print(msg,end='')
                     if self.exited.is_set() and self.log.empty():
                         return
 
@@ -85,8 +94,8 @@ def withLogAndControls(superclass):
             self.watch_log_button.description = 'watch'
             self.watch_log_button.button_style = 'primary'
 
-        def clear_log(self):
-            self.output.clear_output()            
+        def clear_log(self,wait=False):
+            self.output.clear_output(wait=wait)            
             
         def show_log(self):
             display(self.output)
@@ -126,17 +135,22 @@ def withLogAndControls(superclass):
             self.__disable_buttons_after_exited__()
 
         def run(self):
+            def log(x):
+                __builtins__.print('OVERRIDDEN:'+x)
+
             if issubclass(self.__class__,Process):
                 sys.stdout = self.log
                 sys.stderr = self.log
+
             fn = self._target if self._target is not None else getattr(self,'work')
+            
             if self.loop:
                 while not self.exiting.is_set():
                     fn(*self._args,**self._kwargs)
             else:
                 fn(*self._args,**self._kwargs)
 
-                
+            
             # when the work is done, signal that we are finished
             self.exited.set()
         
