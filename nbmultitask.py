@@ -135,9 +135,6 @@ def withLogAndControls(superclass):
             self.__disable_buttons_after_exited__()
 
         def run(self):
-            def log(x):
-                __builtins__.print('OVERRIDDEN:'+x)
-
             if issubclass(self.__class__,Process):
                 sys.stdout = self.log
                 sys.stderr = self.log
