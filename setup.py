@@ -16,7 +16,10 @@ setup(
     url="https://github.com/micahscopes/nbmultitask",
     download_url="https://github.com/micahscopes/nbmultitask/archive/0.1.0.tar.gz",
     packages=find_packages(),
-    install_requires=[],
+    install_requires=[
+        'ipywidgets',
+        'ipython'
+    ],
     long_description=long_description,
     classifiers=[
         "Programming Language :: Python",
