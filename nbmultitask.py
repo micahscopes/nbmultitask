@@ -10,7 +10,7 @@ import sys
 import random
 from io import StringIO
 import traceback
-import inspect
+from IPython import get_ipython
 from IPython.core.magic import Magics, magics_class, cell_magic
 
 
@@ -210,46 +210,35 @@ ThreadWithLogAndControls = withLogAndControls(Thread)
 
 
 # https://ipython.readthedocs.io/en/stable/config/custommagics.html
+# https://ipython-books.github.io/14-creating-an-ipython-extension-with-custom-magic-commands/
 # The class MUST call this class decorator at creation time
 @magics_class
 class RunAsync(Magics):
-    def get_frame(self):
-        stack = inspect.stack()
-        for finfo in stack:
-            if finfo.filename.startswith('<ipython-input'):
-                frame = finfo.frame
-                name = finfo.filename
-                break
-        else:
-            raise RuntimeError("Not called from an IPython cell")
-        return name, frame
-
     @cell_magic
     def thread(self, line, cell):
 
-        name, frame = self.get_frame()
-        code = compile(cell, name, 'exec')
-
         def fn(thread_print):
-            lcls = locals()
-            lcls.update(frame.f_locals)
-            exec(code, frame.f_globals, lcls)
+            ipy = get_ipython()
+            ipy.push({'thread_print': thread_print})
+            ipy.run_cell(cell)
+            # errors in thread should propagate to interactive shell
 
-        task = ThreadWithLogAndControls(target=fn, name=name)
+        task = ThreadWithLogAndControls(target=fn, name='nbmultitask-thread')
         return task.control_panel()
 
     @cell_magic
     def process(self, line, cell):
 
-        name, frame = self.get_frame()
-        code = compile(cell, name, 'exec')
-
         def fn():
-            lcls = locals()
-            lcls.update(frame.f_locals)
-            exec(code, frame.f_globals, lcls)
+            ipy = get_ipython()
+            result = ipy.run_cell(cell)
+            # send errors to parent
+            if result.error_before_exec:
+                raise result.error_before_exec
+            if result.error_in_exec:
+                raise result.error_in_exec
 
-        task = ProcessWithLogAndControls(target=fn, name=name)
+        task = ProcessWithLogAndControls(target=fn, name='nbmultitask-process')
         return task.control_panel()
 
 
